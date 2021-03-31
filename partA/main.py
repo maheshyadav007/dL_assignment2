@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from keras.layers import Dense, Activation, Flatten
 from tensorflow.keras import Sequential
 
 path = r"E:\inaturalist_12K\train"
@@ -34,7 +35,8 @@ def buildModel():
         model.add(layers.Conv2D(nFilters[i], filterSize[i], strides=1, activation=activationFuncs[i]))
         model.add(layers.MaxPooling2D(maxPoolSize[i]))
         
-
+      
+    model.add(Flatten())
     model.add(layers.Dense(nDense, activation="relu"))
     model.add(layers.Dense(nClassifiers, activation = "softmax"))
 
@@ -42,7 +44,7 @@ def buildModel():
 
 model = buildModel()
 model.summary()
-model.add(layers.GlobalMaxPooling2D())
+#model.add(layers.GlobalMaxPooling2D())
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),loss=keras.losses.CategoricalCrossentropy(),metrics=['accuracy'])
 #model.fit(x_train,y_train,batch_size=64,epochs=10,validation_data=(x_valid, y_valid),callbacks=[checkpointer])
