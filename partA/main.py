@@ -3,11 +3,14 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from keras.layers import Dense, Activation, Flatten
 from tensorflow.keras import Sequential
+from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 
-path = r"E:\inaturalist_12K\train"
 
-batchSize = 64
-dataset = keras.preprocessing.image_dataset_from_directory(path,label_mode = 'categorical', batch_size=batchSize)
+#Global Variables
+TrainPath = r"E:\inaturalist_12K\train"
+TestPath = r"E:\inaturalist_12K\test" 
+ImageSize = (256,256)
+InputShape = (256,256,3)
 
 '''
 for data, labels in dataset:
@@ -16,36 +19,61 @@ for data, labels in dataset:
    print(labels.shape)  # (64,)
    print(labels[0])  # int32
 '''
-inputShape = (256,256,3)
-#inputShape = (inputShape[1],inputShape[2],inputShape[3])
+def loadData(path, batchSize = 64, typeData = None):
+    scaler = Rescaling(scale=1.0 / 255)
+    if typeData == "train":
+        trainDataset = keras.preprocessing.image_dataset_from_directory(path, label_mode = 'categorical',seed=1337, validation_split = 0.1, subset = "training",  batch_size=batchSize, image_size = ImageSize)
+        valDataset   = keras.preprocessing.image_dataset_from_directory(path, label_mode = 'categorical',seed=1337, validation_split = 0.1, subset = "validation",  batch_size=batchSize, image_size = ImageSize)
+        return trainDataset, valDataset
+    elif typeData == "test":
+        dataset = keras.preprocessing.image_dataset_from_directory(path, label_mode = 'categorical',seed=1337,batch_size=batchSize, image_size = ImageSize)
+        return dataset
 
-def buildModel():
-    model = Sequential()
-    model.add(keras.Input(shape=inputShape))
-
+def buildModel(inputShape):
+    
+    #Model Characteristics
     convLayerSize = 5
     nFilters = [32]*convLayerSize
     filterSize = [5]*convLayerSize
     activationFuncs = ["relu"]*convLayerSize
     maxPoolSize = [2]*convLayerSize
-    nDense = 64
+    denseLayerSize = 1
+    nDense = [64]*denseLayerSize
     nClassifiers = 10
+
+    model = Sequential()
+    model.add(keras.Input(shape=inputShape))
+    model.add(layers.experimental.preprocessing.Rescaling(1.0 / 255))
 
     for i in range(convLayerSize):
         model.add(layers.Conv2D(nFilters[i], filterSize[i], strides=1, activation=activationFuncs[i]))
         model.add(layers.MaxPooling2D(maxPoolSize[i]))
         
-      
     model.add(Flatten())
-    model.add(layers.Dense(nDense, activation="relu"))
+
+    for i in range(denseLayerSize):
+        model.add(layers.Dense(nDense[i], activation="relu"))
+
     model.add(layers.Dense(nClassifiers, activation = "softmax"))
 
     return model
 
-model = buildModel()
-model.summary()
+
 #model.add(layers.GlobalMaxPooling2D())
 #model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),loss=keras.losses.CategoricalCrossentropy(),metrics=['accuracy'])
 #model.fit(x_train,y_train,batch_size=64,epochs=10,validation_data=(x_valid, y_valid),callbacks=[checkpointer])
-model.fit(dataset, epochs=10)
+
+def run():
+    
+    batchSize = 64
+    epochs = 10
+
+    trainDataset, valDataset = loadData(TrainPath, batchSize, typeData = "train")
+    trainDataset = trainDataset.prefetch(buffer_size=batchSize)
+    valDataset = valDataset.prefetch(buffer_size=batchSize)
+    model = buildModel(InputShape)
+    #model.summary()
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),loss=keras.losses.CategoricalCrossentropy(),metrics=['accuracy'])
+    model.fit(trainDataset, epochs = epochs)
+
+run()
