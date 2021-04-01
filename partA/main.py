@@ -23,10 +23,10 @@ def loadData(path, batchSize = 64, typeData = None):
     scaler = Rescaling(scale=1.0 / 255)
     if typeData == "train":
         trainDataset = keras.preprocessing.image_dataset_from_directory(TrainPath, label_mode = 'categorical',seed=1337, validation_split = 0.1, subset = "training",  batch_size=batchSize, image_size = ImageSize)
-        valDataset   = keras.preprocessing.image_dataset_from_directory(TestPath, label_mode = 'categorical',seed=1337, validation_split = 0.1, subset = "validation",  batch_size=batchSize, image_size = ImageSize)
+        valDataset   = keras.preprocessing.image_dataset_from_directory(TrainPath, label_mode = 'categorical',seed=1337, validation_split = 0.1, subset = "validation",  batch_size=batchSize, image_size = ImageSize)
         return trainDataset, valDataset
     elif typeData == "test":
-        dataset = keras.preprocessing.image_dataset_from_directory(path, label_mode = 'categorical',seed=1337,batch_size=batchSize, image_size = ImageSize)
+        dataset = keras.preprocessing.image_dataset_from_directory(TestPath, label_mode = 'categorical',seed=1337,batch_size=batchSize, image_size = ImageSize)
         return dataset
 
 def buildModel(inputShape):
