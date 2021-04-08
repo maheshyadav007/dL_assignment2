@@ -1,0 +1,51 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.10.20
+    code_path: code/partB/main.py
+    framework: keras
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.6.3
+    t:
+      1:
+      - 2
+      - 3
+      - 5
+      4: 3.6.3
+      5: 0.10.20
+      8:
+      - 3
+      - 5
+activation:
+  desc: null
+  value: relu
+base_model:
+  desc: null
+  value: InceptionResNetV2
+batch_size:
+  desc: null
+  value: 64
+dense_layer_depth:
+  desc: null
+  value: 0
+dropout:
+  desc: null
+  value: 0.2
+epochs:
+  desc: null
+  value: 10
+fine_tune_depth:
+  desc: null
+  value: 8
+global_flattening_layer:
+  desc: null
+  value: GlobalAveragePooling2D
+learning_rate:
+  desc: null
+  value: 0.001
+optimizer:
+  desc: null
+  value: Adam

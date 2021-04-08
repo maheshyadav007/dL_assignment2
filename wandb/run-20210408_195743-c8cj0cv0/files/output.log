@@ -1,0 +1,6 @@
+Found 9999 files belonging to 10 classes.
+Using 9000 files for training.
+Found 9999 files belonging to 10 classes.
+Using 999 files for validation.
+Epoch 1/10
+  1/141 [..............................] - ETA: 1:59:44 - loss: 2.8181 - accuracy: 0.0312

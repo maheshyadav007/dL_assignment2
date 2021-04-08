@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "d:\IITM\deepLearning\Assignments\assignment2\partB\main.py", line 199, in <module>
+    wandb.agent(sweep_id,function=run(isWandBActive))
+  File "d:\IITM\deepLearning\Assignments\assignment2\partB\main.py", line 133, in run
+    batchSize = config.batch_size
+  File "C:\Users\MY\AppData\Local\Programs\Python\Python36\lib\site-packages\wandb\sdk\wandb_config.py", line 152, in __getattr__
+    return self.__getitem__(key)
+  File "C:\Users\MY\AppData\Local\Programs\Python\Python36\lib\site-packages\wandb\sdk\wandb_config.py", line 123, in __getitem__
+    return self._items[key]
+KeyError: 'batch_size'

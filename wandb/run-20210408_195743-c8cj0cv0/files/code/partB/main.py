@@ -15,6 +15,7 @@ if socket.gethostname() == "DESKTOP-ROKMKKK":
     TrainPath = r"E:\inaturalist_12K\train"
     TestPath = r"E:\inaturalist_12K\test" 
 else:
+   
     drive.mount('/content/drive')
     TrainPath = r"/content/drive/MyDrive/inaturalist_12K/train"
     TestPath = r"/content/drive/MyDrive/inaturalist_12K/test"
@@ -120,33 +121,12 @@ def getOptimizer(optimizerName,learningRate):
         optimizer = keras.optimizers.SGD(learning_rate=learningRate)
     return optimizer
 
-def getDataset(batchSize=64):
+def getDataset(batchSize):
     trainDataset, valDataset = loadData(TrainPath, batchSize, typeData = "train")
     trainDataset = trainDataset.prefetch(buffer_size=batchSize)
     valDataset = valDataset.prefetch(buffer_size=batchSize)
     return trainDataset, valDataset
 
-
-sweep_config = {
-      'method' : 'random',
-      'metric' : {
-          'name' : 'accuracy',
-          'goal' : 'maximize'
-      },
-      'parameters' : {
-          'learning_rate' : {'values' : [1e-2, 1e-3,1e-4]},
-          'batch_size' : {'values' : [32, 64, 128]},
-          'dense_layer_depth' : {'values' : [0,1]},
-          'epochs' : {'values' : [10]},
-          'dropout' : {'values' : [0.2,0.4, 0.5]},
-          'activation' : {'values' : ['sigmoid', 'tanh', 'relu']},
-          'base_model' : {'values' : ['Xception', 'InceptionV3', 'InceptionResNetV2','ResNet50']},
-          'fine_tune_depth':{'values':[5,8,10,15]},
-          'optimizer':{'values' : ['Adam']},
-          'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D']},
-      }
-      
-}
 hyperparameters_defaults = {
           'learning_rate' :1e-3,
           'batch_size' : 64,
@@ -159,22 +139,7 @@ hyperparameters_defaults = {
           'optimizer':'Adam',
           'global_flattening_layer':'GlobalAveragePooling2D'
         }
-
-        
-'''
-----------------------------------------------------------------------------------------------------------------------
-isWandbActive : whether to run with or without wandb
-
-NOTE:
-1. Look for NASNetLarge
-
-'''
-
-
-isWandBActive = True
-trainDataset, valDataset = getDataset()
-
-def train():
+def run(isWandBActive):
     if isWandBActive:
         wandb.init(config = hyperparameters_defaults)
         config = wandb.config
@@ -205,7 +170,7 @@ def train():
     
     optimizer = getOptimizer(optimizerName,learningRate)
     callbacks = getCallbacks(isWandBActive)
-    
+    trainDataset, valDataset = getDataset(batchSize)
     
 
     model = buildModel(modelName=baseModel,dropout=dropout,_globalLayer=gFL,dataAugment=True,sizeFCHL=sizeFCHL)
@@ -219,9 +184,31 @@ def train():
     history_fine = model.fit(trainDataset,epochs=total_epochs,initial_epoch=history.epoch[-1],validation_data=valDataset,callbacks=callbacks)
 
 
+sweep_config = {
+      'method' : 'random',
+      'metric' : {
+          'name' : 'accuracy',
+          'goal' : 'maximize'
+      },
+      'parameters' : {
+          'learning_rate' : {'values' : [1e-2, 1e-3,1e-4]},
+          'batch_size' : {'values' : [32, 64, 128]},
+          'dense_layer_depth' : {'values' : [0,1]},
+          'epochs' : {'values' : [10]},
+          'dropout' : {'values' : [0.2,0.4, 0.5]},
+          'activation' : {'values' : ['sigmoid', 'tanh', 'relu']},
+          'base_model' : {'values' : ['Xception', 'InceptionV3', 'InceptionResNetV2','ResNet50']},
+          'fine_tune_depth':{'values':[5,8,10,15]},
+          'optimizer':{'values' : ['Adam']},
+          'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D']},
+      }
+      
+}
+
+isWandBActive = True
 
 if isWandBActive:
     sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionalNN")
-    wandb.agent(sweep_id,function=train)
+    wandb.agent(sweep_id,function=run(isWandBActive))
 else:
-    train()
+    run(isWandBActive)
