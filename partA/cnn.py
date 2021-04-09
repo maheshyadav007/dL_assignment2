@@ -19,6 +19,8 @@ from keras.layers import Dense, Activation, Flatten
 from keras.models import Sequential
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import EarlyStopping
+
 
 sweep_config = {
       'method' : 'random',
@@ -109,10 +111,8 @@ def buildModel(inputShape, dropout, _globalLayer, dataAugment = True,):
 
     model = Sequential()
     inputLayer = keras.Input(shape=InputShape)
-    #print(inputLayer.shape)
     if dataAugment:
-      x = data_augmentation(inputLayer)
-      #print(x.shape)
+      x = data_augmentation
       model.add(x)
     else:
       model.add(inputLayer)
@@ -162,11 +162,10 @@ def run():
     model = buildModel(InputShape, dropout=config.dropout, _globalLayer=config.global_flattening_layer, dataAugment=True)
     model.summary()
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=config.learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
-    early_stopper = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=2)
-    model.fit(trainDataset, epochs = config.epochs, validation_data=valDataset, callbacks=[WandbCallback(early_stopper)])
+    early_stopper = EarlyStopping(monitor='val_accuracy', patience=2)
+    model.fit(trainDataset, epochs = config.epochs, validation_data=valDataset, callbacks=[early_stopper])
     wandb.log({ 'accuracy' : accuracy})
     wandb.log({ 'loss' : loss})
-
-run()
+      
 
 wandb.agent(sweep_id,function=run)
