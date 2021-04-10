@@ -33,15 +33,19 @@ sweep_config = {
           'nFilters' : {'values' : [128]},
           'convLayerSize' : {'values' : [5]},
           'learning_rate' : {'values' : [0.0001]},
-          'maxPoolSize' : {'values' : [2]},
+          'sizeMaxpool' : {'values' : [2]},
           'batchSize' : {'values' : [16]},
+	  'nDense' :  {'values' : [64]},
+	  'dataAugment' :  {'values' : [True]},
+	  'batchNormalization' : {'values' : [True]},
           'denseLayerSize' : {'values' : [3]},
           'filterSize' : {'values' : [64]},
           'epochs' : {'values' : [10]},
           'optimizer':{'values' : ['Adam']},
           'dropout ' : {'values' : [0.3]},
           'activationFuncs' : {'values' : ['tanh']},
-          'global_flattening_layer':{'values' : ['Flatten']},
+	  'filterArrangement' : {'values' : ['doubling']},
+          'global_flattening_layer':{'values' : ['Flatten']}
       }
       
 }
@@ -84,21 +88,26 @@ def loadData(path, batchSize = 64, typeData = None):
        
 
 
-def buildModel(inputShape, dropout, _globalLayer, dataAugment = True,):
+def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers, dropout, _globalLayer,filterArrangement,batchNormalization, dataAugment = True):
     
     #Model Characteristics
+    #Note: batchNormalization
     convLayerSize = 5
-    nFilters = [32]*convLayerSize
-    filterSize = [5]*convLayerSize
-    activationFuncs = ["relu"]*convLayerSize
-    maxPoolSize = [2]*convLayerSize
     denseLayerSize = 1
-    nDense = [64]*denseLayerSize
     nClassifiers = 10
 
+    if filterArrangement == 'doubling':
+      for i in range(len(nFilters)-1):
+        nFilters[i+1] = 2*nFilters[i]
+    elif filterArrangement == 'halving':
+        nFilters[i+1] = int(nFilters[i]/2)
+
+   
     data_augmentation = keras.Sequential([
         layers.experimental.preprocessing.RandomFlip("horizontal"),
-        layers.experimental.preprocessing.RandomRotation(0.1),
+        layers.experimental.preprocessing.RandomRotation(0.2),
+        layers.experimental.preprocessing.RandomZoom(0.1),
+        layers.experimental.preprocessing.Resizing(ImageSize[0], ImageSize[0]),
         ])
     
     if _globalLayer == "GlobalAveragePooling2D":
@@ -112,43 +121,24 @@ def buildModel(inputShape, dropout, _globalLayer, dataAugment = True,):
 
     model = Sequential()
     inputLayer = keras.Input(shape=InputShape)
+    model.add(inputLayer)
     if dataAugment:
       x = data_augmentation
       model.add(x)
-    else:
-      model.add(inputLayer)
+
+      
 
     model.add(layers.experimental.preprocessing.Rescaling(1.0 / 255))
 
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(64, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(64, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    '''for i in range(convLayerSize):
-        model.add(layers.Conv2D(nFilters[i], filterSize[i], strides=1, activation=activationFuncs[i]))
-        model.add(layers.Activation('relu'))
-        model.add(layers.MaxPooling2D(maxPoolSize[i]))'''
+    for i in range(convLayerSize):
+      model.add(layers.Conv2D(nFilters[i], (sizeFilters[i], sizeFilters[i])))
+      model.add(layers.Activation(activationFuncs[i]))
+      model.add(layers.MaxPooling2D(pool_size=(sizeMaxpool[i],sizeMaxpool[i])))
         
     model.add(globalLayer)
-
+    model.add(layers.Dropout(dropout))
     for i in range(denseLayerSize):
-        model.add(layers.Dense(nDense[i], activation = "relu" ))
+        model.add(layers.Dense(sizeDenseLayers[i], activation = "relu" ))
         model.add(layers.Dropout(dropout))
 
     model.add(layers.Dense(nClassifiers, activation = "softmax"))
@@ -183,14 +173,17 @@ config_defaults = {
           'convLayerSize' : 5,
           'learning_rate' : 0.0001,
           'activationFuncs' : 'tanh',
+	  'dataAugment' : True,
+          'batchNormalization' : True,
           'dropout' : 0.3,
           'seed' : 42,
           'nFilters' : 128,
           'filterSize' : 64,
           'optimizer':'Adam',
           'global_flattening_layer':'Flatten',
+	  'filterArrangement' : 'doubling',
           'denseLayerSize' : 3,
-          'maxPoolSize' : 2,
+          'sizeMaxpool' : 2,
           'nDense' : 64
         }
 
@@ -198,38 +191,45 @@ config_defaults = {
 isWandBActive = True
 
 def run():
+    convLayerSize = 5
+    denseLayerSize = 1
+    nClassifiers = 10
+
     if isWandBActive:
       wandb.init(config = config_defaults)
       config = wandb.config
       epochs = config.epochs
       batchSize = config.batchSize
-      convLayerSize = config.convLayerSize
       learning_rate = config.learning_rate
-      activationFuncs = config.activationFuncs
+      activationFuncs = [config.activationFuncs]*convLayerSize
       dropout = config.dropout
       seed = config.seed
-      nFilters = config.nFilters
-      filterSize = config.filterSize
+      nFilters = [config.nFilters]*convLayerSize
+      sizeFilters = [config.filterSize]*convLayerSize
       optimizer = config.optimizer
       global_flattening_layer = config.global_flattening_layer
-      denseLayerSize = config.denseLayerSize
+      sizeDenseLayers = [config.nDense]*denseLayerSize
+      dataAugment = config.dataAugment
+      batchNormalization = config.batchNormalization
       maxPoolSize = config.maxPoolSize
-      nDense = config.nDense
+      filterArrangement = config.filterArrangement
+      sizeDenseLayers = [config.nDense]*denseLayerSize
 
     else:
       epochs = 10,
       batchSize = 16,
-      convLayerSize = 5,
       learning_rate = 0.0001,
-      activationFuncs = "tanh",
+      activationFuncs = ["tanh"]*convLayerSize,
       dropout = 0.3,
       seed = 42,
-      nFilters = 128,
-      filterSize = 64,
+      nFilters = [128]*convLayerSize,
+      sizeFilters = [64]*convLayerSize,
       optimizer = "Adam",
       global_flattening_layer = "Flatten",
-      denseLayerSize = 3,
-      maxPoolSize = 2,
+      sizeDenseLayers = [3]*denseLayerSize,
+      dataAugment = True,
+      batchNormalization = True,
+      sizeMaxpool = [2]*convLayerSize,
       nDense = 64
 
     callbacks = getCallbacks(isWandBActive)
