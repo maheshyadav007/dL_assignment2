@@ -30,17 +30,21 @@ sweep_config = {
       },
       'parameters' : {
           'nFilters' : {'values' : [32, 64, 128]},
-          'convLayerSize' : {'values' : [5, 10, 15]},
-          'learning_rate' : {'values' : [1e-2, 1e-3, 1e-4]},
-          'maxPoolSize' : {'values' : [2, 3, 4, 5]},
-          'batchSize' : {'values' : [16, 32, 64, 128]},
-          'denseLayerSize' : {'values' : [1, 2, 3, 4, 5]},
           'filterSize' : {'values' : [32, 64]},
-          'epochs' : {'values' : [5, 10, 15]},
-          'optimizer':{'values' : ['Adam']},
-          'dropout ' : {'values' : [0.3, 0.4, 0.5]},
           'activationFuncs' : {'values' : ['sigmoid', 'tanh', 'relu']},
+          'sizeMaxpool' : {'values' : [2, 3, 4, 5]},
+          'nDense' :  {'values' : [16, 32, 64, 128]},
+          'dataAugment' :  {'values' : [True]},
+          'batchNormalization' : {'values' : [True]},
+          'epochs' : {'values' : [10, 15]},
+          'batchSize' : {'values' : [16, 32, 64, 128]},
+          'learning_rate' : {'values' : [1e-2, 1e-3, 1e-4]},
+          'dropout' :  {'values' : [0.2, 0.4, 0.5]},
+          'optimizer': {'values' : ["Adam"]},
           'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D', 'Flatten']},
+          'filterArrangement' : {'values' : ['equal','doubling','halving']},
+          'convLayerSize' : {'values' : [5, 10, 15]},
+          'denseLayerSize' : {'values' : [1]}
       }
       
 }
@@ -83,21 +87,26 @@ def loadData(path, batchSize = 64, typeData = None):
        
 
 
-def buildModel(inputShape, dropout, _globalLayer, dataAugment = True,):
+def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers, dropout, _globalLayer,filterArrangement,batchNormalization, dataAugment = True):
     
     #Model Characteristics
+    #Note: batchNormalization
     convLayerSize = 5
-    nFilters = [32]*convLayerSize
-    filterSize = [5]*convLayerSize
-    activationFuncs = ["relu"]*convLayerSize
-    maxPoolSize = [2]*convLayerSize
     denseLayerSize = 1
-    nDense = [64]*denseLayerSize
     nClassifiers = 10
 
+    if filterArrangement == 'doubling':
+      for i in range(len(nFilters)-1):
+        nFilters[i+1] = 2*nFilters[i]
+    elif filterArrangement == 'halving':
+        nFilters[i+1] = int(nFilters[i]/2)
+
+   
     data_augmentation = keras.Sequential([
         layers.experimental.preprocessing.RandomFlip("horizontal"),
-        layers.experimental.preprocessing.RandomRotation(0.1),
+        layers.experimental.preprocessing.RandomRotation(0.2),
+        layers.experimental.preprocessing.RandomZoom(0.1),
+        layers.experimental.preprocessing.Resizing(ImageSize[0], ImageSize[0]),
         ])
     
     if _globalLayer == "GlobalAveragePooling2D":
@@ -111,45 +120,29 @@ def buildModel(inputShape, dropout, _globalLayer, dataAugment = True,):
 
     model = Sequential()
     inputLayer = keras.Input(shape=InputShape)
+    model.add(inputLayer)
     if dataAugment:
       x = data_augmentation
       model.add(x)
-    else:
-      model.add(inputLayer)
+
+      
 
     model.add(layers.experimental.preprocessing.Rescaling(1.0 / 255))
 
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(32, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(64, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
-    model.add(layers.Conv2D(64, (3, 3)))
-    model.add(layers.Activation('relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2,2)))
-
+    for i in range(convLayerSize):
+      model.add(layers.Conv2D(nFilters[i], (sizeFilters[i], sizeFilters[i])))
+      model.add(layers.Activation(activationFuncs[i]))
+      model.add(layers.MaxPooling2D(pool_size=(sizeMaxpool[i],sizeMaxpool[i])))
         
     model.add(globalLayer)
-
+    model.add(layers.Dropout(dropout))
     for i in range(denseLayerSize):
-        model.add(layers.Dense(nDense[i], activation = "relu" ))
+        model.add(layers.Dense(sizeDenseLayers[i], activation = "relu" ))
         model.add(layers.Dropout(dropout))
 
     model.add(layers.Dense(nClassifiers, activation = "softmax"))
 
     return model
-
 
 def getCallbacks(isWandBActive):
     callback = EarlyStopping(monitor='val_accuracy', patience=2)
@@ -161,55 +154,68 @@ def getCallbacks(isWandBActive):
 
 
 config_defaults = {
-          'epochs' : 10,
-          'batchSize' : 64,
-          'convLayerSize' : 5,
-          'learning_rate' : 1e-3,
-          'activationFuncs' : 'relu',
-          'dropout' : 0.2,
-          'seed' : 42,
           'nFilters' : 32,
           'filterSize' : 5,
+          'activationFuncs' : 'relu',
+          'sizeMaxpool': 2,
+          'nDense' : 64,
+          'dataAugment' : True,
+          'batchNormalization' : True,
+          'epochs' : 10,
+          'batchSize' : 64,
+          'learning_rate' : 1e-3,
+          'dropout' : 0.2,
+          'seed' : 42,
           'optimizer':'Adam',
           'global_flattening_layer':'GlobalAveragePooling2D',
+          'filterArrangement' : {'values' : ['equal','doubling','halving']},
+          'convLayerSize' : 5,
           'denseLayerSize' : 1,
-          'nDense' : 64
-        }
+          }
+
 
 isWandBActive = True
 
 def run():
+    convLayerSize = 5
+    denseLayerSize = 1
+    nClassifiers = 10
+
     if isWandBActive:
       wandb.init(config = config_defaults)
       config = wandb.config
+      nFilters = [config.nFilters]*convLayerSize
+      sizeFilters = [config.filterSize]*convLayerSize
+      activationFuncs = [config.activationFuncs]*convLayerSize
+      sizeMaxpool = [config.sizeMaxpool]*convLayerSize
+      sizeDenseLayers = [config.nDense]*denseLayerSize
+      dataAugment = config.dataAugment
+      batchNormalization = config.batchNormalization
       epochs = config.epochs
       batchSize = config.batchSize
-      convLayerSize = config.convLayerSize
       learning_rate = config.learning_rate
-      activationFuncs = config.activationFuncs
       dropout = config.dropout
-      seed = config.seed
-      nFilters = config.nFilters
-      filterSize = config.filterSize
+      seed = 42
       optimizer = config.optimizer
       global_flattening_layer = config.global_flattening_layer
-      denseLayerSize = config.denseLayerSize
-      nDense = config.nDense
+      filterArrangement = config.filterArrangement
 
     else:
-      epochs = 10,
-      batchSize = 64,
-      convLayerSize = 5,
-      learning_rate = 1e-3,
-      activationFuncs = "relu",
-      dropout = 0.2,
-      seed = 42,
-      nFilters = 32,
-      filterSize = 5,
-      optimizer = "Adam",
-      global_flattening_layer = "GlobalAveragePooling2D",
-      denseLayerSize = 1,
-      nDense = 64
+      nFilters = [32]*convLayerSize
+      sizeFilters = [5]*convLayerSize
+      activationFuncs = ["relu"]*convLayerSize
+      sizeMaxpool = [2]*convLayerSize
+      sizeDenseLayers = [64]*denseLayerSize
+      dataAugment = True
+      batchNormalization = True
+      epochs = 10
+      batchSize = 64
+      learning_rate = 1e-3
+      dropout = 0.2
+      seed = 42
+      optimizer = "Adam"
+      global_flattening_layer = "GlobalAveragePooling2D"
+      filterArrangement ="equal"
 
     callbacks = getCallbacks(isWandBActive)
 
@@ -217,13 +223,11 @@ def run():
     trainDataset, valDataset = loadData(TrainPath, batchSize=batchSize , typeData = "train")
     trainDataset = trainDataset.prefetch(buffer_size=batchSize)
     valDataset = valDataset.prefetch(buffer_size=batchSize)
-    model = buildModel(InputShape, dropout=dropout, _globalLayer=global_flattening_layer, dataAugment=True)
+    model = buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers, dropout, global_flattening_layer,filterArrangement,batchNormalization, dataAugment)
     #model.summary()
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
-    #early_stopper = EarlyStopping(monitor='val_accuracy', patience=5)
     model.fit(trainDataset, epochs = config.epochs, validation_data=valDataset, callbacks=callbacks)
-    #wandb.log({ 'accuracy' : accuracy})
-    #wandb.log({ 'loss' : loss})
+    
 
 if isWandBActive:
     sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionNN")
