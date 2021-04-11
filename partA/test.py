@@ -211,7 +211,7 @@ def run():
       sizeDenseLayers = [config.nDense]*denseLayerSize
       dataAugment = config.dataAugment
       batchNormalization = config.batchNormalization
-      maxPoolSize = config.maxPoolSize
+      sizeMaxpool = [config.sizeMaxpool]*convLayerSize
       filterArrangement = config.filterArrangement
       sizeDenseLayers = [config.nDense]*denseLayerSize
 
