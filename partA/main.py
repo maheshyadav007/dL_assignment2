@@ -68,6 +68,7 @@ def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers,
       for i in range(len(nFilters)-1):
         nFilters[i+1] = 2*nFilters[i]
     elif filterArrangement == 'halving':
+      for i in range(len(nFilters)-1):
         nFilters[i+1] = int(nFilters[i]/2)
 
    
@@ -306,51 +307,51 @@ if isWandBActive:
 else:
     run()
 
+if Train_data == False:
+	#Loss and accuracy on Test Dataset
+	loss, acc = model.evaluate(testDataset)
+	predictions = model.predict(testDataset)
 
-#Loss and accuracy on Test Dataset
-loss, acc = model.evaluate(testDataset)
-predictions = model.predict(testDataset)
-
-np.argmax(predictions, axis= 1).shape
-for images, labels in testDataset.take(1):
-  print(labels.shape)
-
-
-#plot images
-plt.figure(figsize=(20, 20))
-for images, labels in testDataset.take(1):
-    for i in range(30):
-        ax = plt.subplot(10, 3, i + 1)
-        plt.imshow(images[i].numpy().astype("uint8"))
-        plt.title(classNames[np.argmax((labels[i]))])
-        plt.axis("off")
-
-model.summary()
-
-keras.layers.Conv2D.get_output_at
-
-for layer in model.layers:
-  if 'conv' in layer.name:
-    #filters, biases = layer.get_weights()
-    #print(layer.name, filters.shape)
-
-    model = keras.Model(inputs=model.inputs, outputs=layer.output)
-    feature_maps = model.predict(testDataset.take(1))
-    break
-
-feature_maps.shape
+	np.argmax(predictions, axis= 1).shape
+	for images, labels in testDataset.take(1):
+	  print(labels.shape)
 
 
-#plot filters
-sizeFilter = feature_maps.shape[-1]
-square = 8
-ix = 1
-for _ in range(square):
-	for _ in range(4):
-		ax = pyplot.subplot(square, square, ix)
-		ax.set_xticks([])
-		ax.set_yticks([])
-		pyplot.imshow(feature_maps[0, :, :, ix-1], cmap='gray')
-		ix += 1
-# show the figure
-pyplot.show()
+	#plot images
+	plt.figure(figsize=(20, 20))
+	for images, labels in testDataset.take(1):
+	    for i in range(30):
+		ax = plt.subplot(10, 3, i + 1)
+		plt.imshow(images[i].numpy().astype("uint8"))
+		plt.title(classNames[np.argmax((labels[i]))])
+		plt.axis("off")
+
+	model.summary()
+
+	keras.layers.Conv2D.get_output_at
+
+	for layer in model.layers:
+	  if 'conv' in layer.name:
+	    #filters, biases = layer.get_weights()
+	    #print(layer.name, filters.shape)
+
+	    model = keras.Model(inputs=model.inputs, outputs=layer.output)
+	    feature_maps = model.predict(testDataset.take(1))
+	    break
+
+	feature_maps.shape
+
+
+	#plot filters
+	sizeFilter = feature_maps.shape[-1]
+	square = 8
+	ix = 1
+	for _ in range(square):
+		for _ in range(4):
+			ax = pyplot.subplot(square, square, ix)
+			ax.set_xticks([])
+			ax.set_yticks([])
+			pyplot.imshow(feature_maps[0, :, :, ix-1], cmap='gray')
+			ix += 1
+	# show the figure
+	pyplot.show()
