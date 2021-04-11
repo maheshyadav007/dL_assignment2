@@ -38,8 +38,8 @@ sweep_config = {
 	  'nDense' :  {'values' : [64]},
 	  'dataAugment' :  {'values' : [True]},
 	  'batchNormalization' : {'values' : [True]},
-          'denseLayerSize' : {'values' : [3]},
-          'filterSize' : {'values' : [64]},
+          'denseLayerSize' : {'values' : [1]},
+          'filterSize' : {'values' : [5]},
           'epochs' : {'values' : [10]},
           'optimizer':{'values' : ['Adam']},
           'dropout ' : {'values' : [0.3]},
@@ -159,7 +159,7 @@ def makePredictions(model):
 
 
 def getCallbacks(isWandBActive):
-    callback = EarlyStopping(monitor='val_accuracy', patience=2)
+    callback = EarlyStopping(monitor='accuracy', patience=2)
     if isWandBActive:
         callbacks = [WandbCallback(),callback]
     else:
@@ -178,11 +178,11 @@ config_defaults = {
           'dropout' : 0.3,
           'seed' : 42,
           'nFilters' : 128,
-          'filterSize' : 64,
+          'filterSize' : 5,
           'optimizer':'Adam',
           'global_flattening_layer':'Flatten',
 	  'filterArrangement' : 'doubling',
-          'denseLayerSize' : 3,
+          'denseLayerSize' : 1,
           'sizeMaxpool' : 2,
           'nDense' : 64
         }
@@ -216,44 +216,46 @@ def run():
       sizeDenseLayers = [config.nDense]*denseLayerSize
 
     else:
-      epochs = 10,
-      batchSize = 16,
-      learning_rate = 0.0001,
-      activationFuncs = ["tanh"]*convLayerSize,
-      dropout = 0.3,
-      seed = 42,
-      nFilters = [128]*convLayerSize,
-      sizeFilters = [64]*convLayerSize,
-      optimizer = "Adam",
-      global_flattening_layer = "Flatten",
-      sizeDenseLayers = [3]*denseLayerSize,
-      dataAugment = True,
-      batchNormalization = True,
-      sizeMaxpool = [2]*convLayerSize,
-      nDense = 64
+      nFilters = [128]*convLayerSize
+      sizeFilters = [5]*convLayerSize
+      activationFuncs = ["tanh"]*convLayerSize
+      sizeMaxpool = [2]*convLayerSize
+      sizeDenseLayers = [64]*denseLayerSize
+      dataAugment = True
+      batchNormalization = True
+      epochs = 10
+      batchSize = 16
+      learning_rate = 0.0001
+      dropout = 0.3
+      seed = 42
+      optimizer = "Adam"
+      global_flattening_layer = "Flatten"
+      filterArrangement ="equal"
 
     callbacks = getCallbacks(isWandBActive)
     
 
-    trainDataset, valDataset = loadData(TrainPath, batchSize=config.batchSize , typeData = "train")
-    trainDataset = trainDataset.prefetch(buffer_size=config.batchSize)
-    valDataset = valDataset.prefetch(buffer_size=config.batchSize)
-    model = buildModel(InputShape, dropout=config.dropout, _globalLayer=config.global_flattening_layer, dataAugment=True)
+    testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
+    testDataset = testDataset.prefetch(buffer_size=batchSize)
+    model = buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers, dropout, global_flattening_layer,filterArrangement,batchNormalization, dataAugment)
     #model.summary()
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=config.learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
-  
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
+    model.fit(testDataset, epochs = epochs, callbacks=callbacks) 
     return model
 model = run()
 
-#wandb.agent(sweep_id,function=run)
+if isWandBActive:
+    sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionNN")
+    wandb.agent(sweep_id,function=run)
+else:
+    run()
+
+
 
 """Q4 Implementation
 
 """
 
-#batchSize = 64
-testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
-testDataset = testDataset.prefetch(buffer_size=batchSize)
 loss, acc = model.evaluate(testDataset)
 predictions = model.predict(testDataset)
 
