@@ -1,6 +1,4 @@
-
 !pip install wandb
-import numpy as np
 import wandb
 from wandb.keras import WandbCallback
 from google.colab import drive
@@ -14,6 +12,22 @@ from keras.models import Sequential
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping
+from tensorflow.python.framework import ops
+from tensorflow.keras.models import Model
+import numpy as np
+import cv2
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import Model
+from tensorflow.keras import backend as K
+from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from PIL import Image
+from tensorflow.python.framework.ops import disable_eager_execution
+import tensorflow as tf
+from PIL import Image
+import io
+import matplotlib.pyplot as plt
+
 
 
 
@@ -109,27 +123,10 @@ def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers,
         model.add(layers.Dropout(dropout))
 
     model.add(layers.Dense(nClassifiers, activation = "softmax"))
-
+    model.summary()
     return model
 
 
-
-def makePredictions(model):
-    batchSize = 64
-    testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
-    testDataset = testDataset.prefetch(buffer_size=batchSize)
-    loss, acc = model.evaluate(testDataset)
-    predictions = model.predict(testDataset)
-
-    return loss, acc, predictions
-
-
-'''
-----------------------------------------------------------------------------------------------------------------------
-Train_data : whether to train model on Train Dataset or Test Dataset
-
-'''
-Train_data = True
 
 
 def getCallbacks(isWandBActive):
@@ -170,35 +167,33 @@ config_defaults = {
 
 
 #sweep config for Train Dataset
-if Train_data:
-    sweep_config = {
-      'method' : 'random',
-      'metric' : {
-          'name' : 'accuracy',
-          'goal' : 'maximize'
-      },
-      'parameters' : {
-          'nFilters' : {'values' : [32, 64, 128]},
-          'filterSize' : {'values' : [5, 10]},
-          'activationFuncs' : {'values' : ['sigmoid', 'tanh', 'relu']},
-          'sizeMaxpool' : {'values' : [2, 3, 4, 5]},
-          'nDense' :  {'values' : [16, 32, 64, 128]},
-          'dataAugment' :  {'values' : [True]},
-          'batchNormalization' : {'values' : [True]},
-          'epochs' : {'values' : [10, 15]},
-          'batchSize' : {'values' : [16, 32, 64, 128]},
-          'learning_rate' : {'values' : [1e-2, 1e-3, 1e-4]},
-          'dropout' :  {'values' : [0.2, 0.4, 0.5]},
-          'optimizer': {'values' : ["Adam"]},
-          'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D', 'Flatten']},
-          'filterArrangement' : {'values' : ['equal','doubling','halving']},
-          'convLayerSize' : {'values' : [5, 10, 15]},
-          'denseLayerSize' : {'values' : [1]},
-      } 
-}
 
-#sweep config for best model to apply on Test Dataset
-else:
+sweep_config = {
+    'method' : 'random',
+    'metric' : {
+        'name' : 'accuracy',
+        'goal' : 'maximize'
+        },
+    'parameters' : {
+        'nFilters' : {'values' : [32, 64, 128]},
+        'filterSize' : {'values' : [5, 10]},
+        'activationFuncs' : {'values' : ['sigmoid', 'tanh', 'relu']},
+        'sizeMaxpool' : {'values' : [2, 3, 4, 5]},
+        'nDense' :  {'values' : [16, 32, 64, 128]},
+        'dataAugment' :  {'values' : [True]},
+        'batchNormalization' : {'values' : [True]},
+        'epochs' : {'values' : [10, 15]},
+        'batchSize' : {'values' : [16, 32, 64, 128]},
+        'learning_rate' : {'values' : [1e-2, 1e-3, 1e-4]},
+        'dropout' :  {'values' : [0.2, 0.4, 0.5]},
+        'optimizer': {'values' : ["Adam"]},
+        'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D', 'Flatten']},
+        'filterArrangement' : {'values' : ['equal','doubling','halving']},
+        'convLayerSize' : {'values' : [5, 10, 15]},
+        'denseLayerSize' : {'values' : [1]},
+        } 
+    }
+'''
     sweep_config = {
           'method' : 'random',
           'metric' : {
@@ -224,18 +219,15 @@ else:
               'global_flattening_layer':{'values' : ['Flatten']}
           }     
     }
-sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionNN")
-
 
 '''
-----------------------------------------------------------------------------------------------------------------------
-isWandbActive : whether to run with or without wandb
-
 '''
-isWandBActive = True
+-------------------------------------------------Train Functoion---------------------------------------------------------------------
+isWandBActive : Boolean variable to denote searching for hyperparam if ..False  then evaluation on best model
+'''
+isWandBActive = False
 
-
-def run():
+def train():
     convLayerSize = 5
     denseLayerSize = 1
     nClassifiers = 10
@@ -261,96 +253,171 @@ def run():
         sizeDenseLayers = [config.nDense]*denseLayerSize
 
     else:
-        nFilters = [128]*convLayerSize
-        sizeFilters = [5]*convLayerSize
-        activationFuncs = ["tanh"]*convLayerSize
+        # Best Model's Hyperparameters
+
+        nFilters = [64]*convLayerSize
+        sizeFilters = [7]*convLayerSize
+        activationFuncs = ["relu"]*convLayerSize
         sizeMaxpool = [2]*convLayerSize
-        sizeDenseLayers = [64]*denseLayerSize
+        sizeDenseLayers = [256]*denseLayerSize
         dataAugment = True
         batchNormalization = True
-        epochs = 10
-        batchSize = 16
+        epochs = 1
+        batchSize = 64
         learning_rate = 0.0001
-        dropout = 0.3
+        dropout = 0.1
         seed = 42
         optimizer = "Adam"
         global_flattening_layer = "Flatten"
         filterArrangement ="equal"
 
     callbacks = getCallbacks(isWandBActive)
-    
+        
+    trainDataset, valDataset = loadData(TrainPath, batchSize=batchSize , typeData = "train")
+    testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
 
-    #fit model on Train Dataset
-    if Train_data:    
-        trainDataset, valDataset = loadData(TrainPath, batchSize=batchSize , typeData = "train")
-        trainDataset = trainDataset.prefetch(buffer_size=batchSize)
-        valDataset = valDataset.prefetch(buffer_size=batchSize)
-        model = buildModel(sizeFilters, nFilters, activationFuncs, sizeMaxpool, sizeDenseLayers, dropout, global_flattening_layer, filterArrangement, batchNormalization, dataAugment)
-        model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
-        model.fit(trainDataset, epochs = epochs, validation_data=valDataset, callbacks=callbacks)
+    testDataset = testDataset.prefetch(buffer_size=batchSize)
+    trainDataset = trainDataset.prefetch(buffer_size=batchSize)
+    valDataset = valDataset.prefetch(buffer_size=batchSize)
 
-    #fit model on Test Dataset
-    else:
-        testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
-        testDataset = testDataset.prefetch(buffer_size=batchSize)
-        model = buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers, dropout, global_flattening_layer,filterArrangement,batchNormalization, dataAugment)
-        model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
-        model.fit(testDataset, epochs = epochs, callbacks=callbacks) 
+    model = buildModel(sizeFilters, nFilters, activationFuncs, sizeMaxpool, sizeDenseLayers, dropout, global_flattening_layer, filterArrangement, batchNormalization, dataAugment)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss=keras.losses.CategoricalCrossentropy(), metrics=['accuracy'])
+    model.fit(trainDataset, epochs = epochs, validation_data=valDataset, callbacks=callbacks)
 
-    return model
-model = run()
+    return model, testDataset
 
 if isWandBActive:
     sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionNN")
-    wandb.agent(sweep_id,function=run)
+    wandb.agent(sweep_id,function=train)
 else:
-    run()
+    model, testDataset = train()
 
 
-#Loss and accuracy on Test Dataset
-loss, acc = model.evaluate(testDataset)
-predictions = model.predict(testDataset)
+#-------------------------------------Evaluation on best Model---------------------------
 
-np.argmax(predictions, axis= 1).shape
-for images, labels in testDataset.take(1):
-  print(labels.shape)
+def evaluateModelPerformance(model, testDataset):
+  loss, acc = model.evaluate(testDataset)
+  print("Best model's accuracy on Test Data : ",acc*100 ,"%")
 
 
-#plot images
-plt.figure(figsize=(20, 20))
-for images, labels in testDataset.take(1):
-    for i in range(30):
-        ax = plt.subplot(10, 3, i + 1)
-        plt.imshow(images[i].numpy().astype("uint8"))
-        plt.title(classNames[np.argmax((labels[i]))])
-        plt.axis("off")
+def predictImages(predictions,testDataset):
+  plt.figure(figsize=(20, 20))
+  for images, labels in testDataset.take(1):
+      for i in range(30):
+          ax = plt.subplot(10, 3, i + 1)
+          plt.imshow(images[i].numpy().astype("uint8"))
+          plt.title(classNames[np.argmax(predictions[i], axis= 0)])
+          plt.axis("off")
 
-model.summary()
+def visualizeFilters(model,testDataset):
+  for layer in model.layers:
+    if 'conv' in layer.name:
+      #filters, biases = layer.get_weights()
+      #print(layer.name, filters.shape)
 
-keras.layers.Conv2D.get_output_at
+      model = keras.Model(inputs=model.inputs, outputs=layer.output)
+      feature_maps = model.predict(testDataset.take(1))
+      break
 
-for layer in model.layers:
-  if 'conv' in layer.name:
-    #filters, biases = layer.get_weights()
-    #print(layer.name, filters.shape)
+  sizeFilter = feature_maps.shape[-1]
+  square = 8
+  ix = 1
+  for _ in range(square):
+    for _ in range(4):
+      ax = pyplot.subplot(square, square, ix)
+      ax.set_xticks([])
+      ax.set_yticks([])
+      pyplot.imshow(feature_maps[0, :, :, ix-1], cmap='gray')
+      ix += 1
+  # show the figure
+  pyplot.show()
 
-    model = keras.Model(inputs=model.inputs, outputs=layer.output)
-    feature_maps = model.predict(testDataset.take(1))
-    break
+evaluateModelPerformance(model, testDataset)
+predictions = model.predict(testDataset.take(30))
+predictImages(predictions,testDataset)
+visualizeFilters(model,testDataset)
 
-feature_maps.shape
+#---------------------------------------Guided Backprop----------------------------------------------------------------
 
 
-#plot filters
-sizeFilter = feature_maps.shape[-1]
-square = 8
-ix = 1
-for _ in range(square):
-	for _ in range(4):
-		ax = pyplot.subplot(square, square, ix)
-		ax.set_xticks([])
-		ax.set_yticks([])
-		pyplot.imshow(feature_maps[0, :, :, ix-1], cmap='gray')
-		ix += 1
-# show the figure
-pyplot.show()
+@tf.custom_gradient
+def guidedRelu(x):
+    def grad(dy):
+        return tf.cast(dy>0,"float32") * tf.cast(x>0, "float32") * dy
+    return tf.nn.relu(x), grad
+
+class GuidedBackprop:
+    def __init__(self,model, layerName=None,fI=0,p1=0,p2=0):
+        self.model = model
+        self.layerName = layerName
+        if self.layerName == None:
+            self.layerName = self.find_target_layer()
+        self.fI=fI
+        self.p1=p1
+        self.p2=p2
+        self.gbModel = self.build_guided_model()
+        
+        
+    def find_target_layer(self):
+        for layer in reversed(self.model.layers):
+            if len(layer.output_shape) == 4:
+                return layer.name
+        raise ValueError("Could not find 4D layer. Cannot apply Guided Backpropagation")
+
+    def build_guided_model(self):
+        
+        gbModel = Model(
+            inputs = [self.model.inputs],
+            outputs = [self.model.get_layer(self.layerName).output[0][self.p1][self.p2][self.fI]]
+        )
+        layer_dict = [layer for layer in gbModel.layers[1:] if hasattr(layer,"activation")]
+        for layer in layer_dict:
+            if layer.activation == tf.keras.activations.relu:
+                layer.activation = guidedRelu
+        
+        return gbModel
+    
+    def guidedBackprop(self, images, upsample_size):
+        with tf.GradientTape() as tape:
+            inputs = tf.cast(images, tf.float32)
+            tape.watch(inputs)
+            outputs = self.gbModel(inputs)
+        grads = tape.gradient(outputs, inputs)[0]
+        saliency = cv2.resize(np.asarray(grads), upsample_size)
+        return saliency
+
+def getProcessedImage(testDataset):
+  for images, labels in testDataset.take(1):
+    scaler = Rescaling(scale=1.0 / 255)
+    processedImage = scaler(images[0])
+    processedImage = np.expand_dims(processedImage, axis=0)
+    return processedImage
+
+def deprocessImage(x):
+    x = x.copy()
+    x -= x.mean()
+    x /= (x.std() + K.epsilon())
+    x *= 0.25
+    x += 0.5
+    x = np.clip(x, 0, 1)
+    x *= 255
+    if K.image_data_format() == 'channels_first':
+        x = x.transpose((1, 2, 0))
+    x = np.clip(x, 0, 255).astype('uint8')
+    return x
+
+processedImage = getProcessedImage(testDataset)
+layerName = model.layers[14].name
+
+plt.figure(figsize=(50, 50))
+for i in range(10):
+    plt.subplot(10, 1, i+1)
+    guidedBP = GuidedBackprop(model=model,layerName=layerName,fI=i,p1=0,p2=0)
+    gbCam = guidedBP.guidedBackprop(processedImage,(256,256))
+    gbIm = deprocessImage(gbCam)
+    gbIm = cv2.cvtColor(gbIm, cv2.COLOR_BGR2GRAY)
+    plt.imshow(gbIm,cmap="gray")
+    plt.axis("off")
+    plt.show()
+
+#--------------------------------------------------------------------------------------------------------------
