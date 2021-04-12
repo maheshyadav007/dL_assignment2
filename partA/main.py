@@ -131,13 +131,8 @@ def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers,
 
 
 def getCallbacks(isWandBActive):
-    #Early Stopping is monitor on validation accuracy for Train Dataset
-    if Train_data:
-        callback = EarlyStopping(monitor='val_accuracy', patience=2)
-
-    #Early Stopping is monitor on accuracy for Test Dataset
-    else:
-        callback = EarlyStopping(monitor='accuracy', patience=2)
+    
+    callback = EarlyStopping(monitor='val_accuracy', patience=2)
 
     if isWandBActive:
         callbacks = [WandbCallback(),callback]
