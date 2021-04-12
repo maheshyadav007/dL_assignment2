@@ -82,6 +82,7 @@ def buildModel(sizeFilters,nFilters,activationFuncs,sizeMaxpool,sizeDenseLayers,
       for i in range(len(nFilters)-1):
         nFilters[i+1] = 2*nFilters[i]
     elif filterArrangement == 'halving':
+      for i in range(len(nFilters)-1):
         nFilters[i+1] = int(nFilters[i]/2)
 
    
