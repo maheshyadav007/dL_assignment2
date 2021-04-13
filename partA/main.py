@@ -226,7 +226,7 @@ sweep_config = {
 isWandBActive : Boolean variable to denote searching for hyperparam if ..False  then evaluation on best model
 '''
 
-isWandBActive = True
+isWandBActive = False
 
 def train():
     convLayerSize = 5
@@ -257,20 +257,20 @@ def train():
         # Best Model's Hyperparameters
 
         nFilters = [64]*convLayerSize
-        sizeFilters = [5]*convLayerSize
+        sizeFilters = [7]*convLayerSize
         activationFuncs = ["relu"]*convLayerSize
-        sizeMaxpool = [2]*convLayerSize
-        sizeDenseLayers = [256]*denseLayerSize
+        sizeMaxpool = [3]*convLayerSize
+        sizeDenseLayers = [64]*denseLayerSize
         dataAugment = True
         batchNormalization = True
         epochs = 50
-        batchSize = 64
-        learning_rate = 0.001
+        batchSize = 128
+        learning_rate = 0.0001
         dropout = 0.1
         seed = 42
         optimizer = "Adam"
         global_flattening_layer = "GlobalAveragePooling2D"
-        filterArrangement ="equal"
+        filterArrangement ="doubling"
 
     callbacks = getCallbacks(isWandBActive)
     

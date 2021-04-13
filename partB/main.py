@@ -14,7 +14,7 @@ import socket
 #Global Variables
 if socket.gethostname() == "DESKTOP-ROKMKKK":
     TrainPath = r"E:\inaturalist_12K\train"
-    TestPath = r"E:\inaturalist_12K\test" 
+    TestPath = r"E:\inaturalist_12K\val" 
 else:
     drive.mount('/content/drive')
     TrainPath = r"/content/drive/MyDrive/inaturalist_12K/train"
@@ -142,7 +142,7 @@ def fineTune(model,modelName,k):
     
 
 def getCallbacks(isWandBActive):
-    callback = keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=3)
+    callback = keras.callbacks.EarlyStopping(monitor='val_accuracy',restore_best_weights=True, patience=3)
     if isWandBActive:
         callbacks = [WandbCallback(),callback]
     else:
@@ -211,8 +211,7 @@ NOTE:
 '''
 
 
-isWandBActive = True
-trainDataset, valDataset = getDataset()
+isWandBActive = False
 
 def train():
     if isWandBActive:
@@ -230,25 +229,26 @@ def train():
         sizeFCHL = [config.sizeFCHL]*denseLayerDepth
 
     else:
-        batchSize = 64
-        dropout = 0.4
+        #Best hyperparameters
+        batchSize = 128
+        dropout = 0.2
         activation = "relu"
         fineTuneDepth = 10
-        baseModel = "EfficientNetB7"
+        baseModel = "NASNetLarge"
         optimizerName = "Adam"
         gFL = "GlobalAveragePooling2D"
-        denseLayerDepth = 1
+        denseLayerDepth = 2
         learningRate = 1e-3
         sizeFCHL = [1024]*denseLayerDepth
 
     initial_epochs = 10
     fine_tune_epochs = 10
     
-
-    
     optimizer = getOptimizer(optimizerName,learningRate)
     callbacks = getCallbacks(isWandBActive)
-    
+    trainDataset, valDataset = getDataset(batchSize=batchSize)
+    testDataset = loadData(TestPath,batchSize=batchSize, typeData= "test")
+    testDataset = testDataset.prefetch(buffer_size=batchSize)
     
 
     model = buildModel(modelName=baseModel,dropout=dropout,_globalLayer=gFL,dataAugment=True,sizeFCHL=sizeFCHL)
@@ -261,7 +261,8 @@ def train():
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-4),loss=keras.losses.CategoricalCrossentropy(),metrics=['accuracy'])
     history_fine = model.fit(trainDataset,epochs=total_epochs,initial_epoch=history.epoch[-1],validation_data=valDataset,callbacks=callbacks)
 
-
+    loss, acc = model.evaluate(testDataset)
+    print("Best model's accuracy on Test Data : ",acc*100 ,"%")
 
 if isWandBActive:
     sweep_id = wandb.sweep(sweep_config, entity="dl_assignment2", project="ConvolutionalNN")
