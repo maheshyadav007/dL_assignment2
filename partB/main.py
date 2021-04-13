@@ -66,6 +66,9 @@ def fetchPretrainedModel(modelName):
     elif modelName == "EfficientNetB7":
         preProcess = keras.applications.efficientnet.preprocess_input
         baseModel = keras.applications.EfficientNetB7(weights='imagenet', input_shape=InputShape, include_top=False)
+    elif modelName == "EfficientNetB4":
+        preProcess = keras.applications.efficientnet.preprocess_input
+        baseModel = keras.applications.EfficientNetB4(weights='imagenet', input_shape=InputShape, include_top=False)
     else:
         raise Exception("Invalid Base Model Name")
     return baseModel, preProcess
@@ -157,28 +160,8 @@ def getOptimizer(optimizerName,learningRate):
 
 def getDataset(batchSize=64):
     trainDataset, valDataset = loadData(TrainPath, batchSize, typeData = "train")
-    
-    
-
     trainDataset = trainDataset.prefetch(buffer_size=batchSize)
-
-    
     valDataset = valDataset.prefetch(buffer_size=batchSize)
-
-
-
-    #normalizer = Normalization(axis=-1)
-    #normalizer.adapt(trainDataset)
-    #trainDataset = normalizer(trainDataset)
-
-    #trainDataset = trainDataset.map(lambda x, y: (tf.image.resize(x, ImageSize), y))
-    #valDataset = valDataset.map(lambda x, y: (tf.image.resize(x, ImageSize), y))
-
-    #trainDataset = trainDataset.cache().batch(batchSize).prefetch(buffer_size=10)
-    #valDataset = valDataset.cache().batch(batchSize).prefetch(buffer_size=10)
-    #test_ds = test_ds.cache().batch(batch_size).prefetch(buffer_size=10)
-    #test_ds = test_ds.map(lambda x, y: (tf.image.resize(x, size), y))
-
     return trainDataset, valDataset
 
 
@@ -196,7 +179,7 @@ sweep_config = {
           'epochs' : {'values' : [10]},
           'dropout' : {'values' : [0.2,0.4, 0.5]},
           'activation' : {'values' : ['sigmoid', 'tanh', 'relu']},
-          'base_model' : {'values' : ['EfficientNetB7','Xception', 'InceptionV3', 'InceptionResNetV2','ResNet50','VGG19','NASNetLarge']},
+          'base_model' : {'values' : ['EfficientNetB4','Xception', 'InceptionV3', 'InceptionResNetV2','ResNet50','VGG19','NASNetLarge','EfficientNetB7']},
           'fine_tune_depth':{'values':[5,10, 15]},
           'optimizer':{'values' : ['Adam','RMSprop']},
           'global_flattening_layer':{'values' : ['GlobalAveragePooling2D','GlobalMaxPool2D','Flatten']},
@@ -228,7 +211,7 @@ NOTE:
 '''
 
 
-isWandBActive = False
+isWandBActive = True
 trainDataset, valDataset = getDataset()
 
 def train():
@@ -251,7 +234,7 @@ def train():
         dropout = 0.4
         activation = "relu"
         fineTuneDepth = 10
-        baseModel = "NASNetLarge"
+        baseModel = "EfficientNetB7"
         optimizerName = "Adam"
         gFL = "GlobalAveragePooling2D"
         denseLayerDepth = 1
