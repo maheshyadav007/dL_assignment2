@@ -151,7 +151,7 @@ config_defaults = {
           'convLayerSize' : 5,
           'learning_rate' : 0.0001,
           'activationFuncs' : 'tanh',
-	        'dataAugment' : True,
+	  'dataAugment' : True,
           'batchNormalization' : True,
           'dropout' : 0.3,
           'seed' : 42,
@@ -159,7 +159,7 @@ config_defaults = {
           'filterSize' : 5,
           'optimizer':'Adam',
           'global_flattening_layer' : 'Flatten',
-	        'filterArrangement' : 'doubling',
+	  'filterArrangement' : 'doubling',
           'denseLayerSize' : 1,
           'sizeMaxpool' : 2,
           'nDense' : 64
@@ -222,7 +222,7 @@ sweep_config = {
 
 '''
 '''
--------------------------------------------------Train Functoion---------------------------------------------------------------------
+-------------------------------------------------Train Function---------------------------------------------------------------------
 isWandBActive : Boolean variable to denote searching for hyperparam if ..False  then evaluation on best model
 '''
 
