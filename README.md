@@ -1,5 +1,8 @@
 #Assignment2
 
+1. TrainPath contains the google drive path of Train Dataset.
+2. TestPath contains the google drive path of Test Dataset.
+
 PartA
 1. For running the sweeps on wandb make isWandBActive = True
 2. For running the best model on test dataset make isWandBActive = False and all the best hyperparameters will be fed to the model
